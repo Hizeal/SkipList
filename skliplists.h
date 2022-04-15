@@ -32,14 +32,14 @@ class Node{
 
 
 template<typename K,typename V>
-Node<K,V>::Node(K k,V v,int level){
+Node<K,V>::Node(K k,V v,int level){ //跳表节点
     this->key = k;
     this->val = v;
-    this->node_level = level;
+    this->node_level = level;//节点层数
 
-    this->forward = new Node<K,V>*[level+1];
+    this->forward = new Node<K,V>* [level+1];//前进指针
 
-    memset(forward, 0 , sizeof(Node<K,V>**(level+1))); 
+    memset(forward, 0 , sizeof(Node<K,V>*)*(level+1)); 
 }
 
 
@@ -83,7 +83,7 @@ class SkipList{
         int _skipList_level;
         int _element_count;
 
-        Node<K,V>* _header;
+        Node<K,V>* _header; //头节点
 };
 
 template<typename K,typename V>
@@ -116,13 +116,58 @@ int SkipList<K,V>::size(){
 template<typename K,typename V>
 int SkipList<K,V>::get_random_level(){
     int k=1;
-    while(rand() % 2) k++;
+    while(rand() % 2) k+=1;
     return k < max_level?k:max_level;
 }
 
 template<typename K,typename V>
-int SkipList<K,V>::insert_element(K k,V v){
+int SkipList<K,V>::insert_element(K key,V value){  //跳表的插入操作
+    mtx.lock();
 
+
+    Node<K,V>* current = this->_header;
+    Node<K,V>* update[max_level+1];
+    
+    memset(update,0,sizeof(Node<K,V>*)*(max_level+1));
+
+    
+    for(int i = _skipList_level - 1;i >= 0 ;i--){
+        while(current->forward[i] != nullptr && current->forward[i]->get_key() < key){
+            current = current->forward[i];
+        }
+        update[i]=current;
+    }
+
+    current = current->forward[0];
+
+    if(current != nullptr && current->get_key() == key){
+        std::cout << "the key " << key << " exists"<<endl;
+        mtx.unlock();
+        return 1;
+    }
+
+    if(current == nullptr || current->get_key() != key){
+        int random_level = get_random_level();
+        Node<K,V> inserted_node = create_node(key,value,random_level);
+
+        if(random_level > _skipList_level){
+            for(int i = _skipList_level+1 ;i < random_level;i++){
+                update[i] = _header;
+            }
+            _skipList_level = random_level;
+        }
+
+        for(int i = 0; i <= _skipList_level; i++){
+            inserted_node->forward[i] = update[i]->forward[i];
+            update[i]->forward[i] = inserted_node;
+        }
+
+        std::cout << "Successfully insert key "<< key << "the value " << value <<endl;
+        ++_element_count;        
+    }
+
+    mtx.unlock();
+    return 0;
 }
 
 template<typename K,typename V>
