@@ -171,12 +171,27 @@ int SkipList<K,V>::insert_element(K key,V value){  //跳表的插入操作
 }
 
 template<typename K,typename V>
-bool SkipList<K,V>::search_element(K k){
+bool SkipList<K,V>::search_element(K key){
 
 }
 
 template<typename K,typename V>
-bool SkipList<K,V>::delete_element(K k){
+bool SkipList<K,V>::delete_element(K key){
+    mtx.lock();
+
+    Node<K,V>* current = this->_header;
+
+    Node<K,V>* update[max_level+1];
+    memset(update,0,sizeof(Node<K,V>*)*(max_level+1));
+
+    for(int i=_skipList_level-1;i>=0;i--){
+        while(current->forward[i] != nullptr && current[i]->forward[i]->get_key() < key){
+            current = current->forward[i];
+        }
+        update[i] = current;
+    }
+
+    current = current->forward[i];
     
 }
 
