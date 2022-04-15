@@ -191,7 +191,18 @@ bool SkipList<K,V>::delete_element(K key){
         update[i] = current;
     }
 
-    current = current->forward[i];
+    current = current->forward[0];
+
+    if(current != nullptr && current->get_key() == key){
+        for(int i = _skipList_level - 1; i >= 0;i--){
+            if(update[i]->forward[i] != nullptr && update[i]->forward[i]->get_key() == key){
+                update[i]->forward[i] = update[i]->forward[i]->forward[i];
+                return true;
+            }
+        }
+    }
+    return false;
+    mtx.unlock();
     
 }
 
