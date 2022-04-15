@@ -162,7 +162,7 @@ int SkipList<K,V>::insert_element(K key,V value){  //跳表的插入操作
             update[i]->forward[i] = inserted_node;
         }
 
-        std::cout << "Successfully insert key "<< key << "the value " << value <<endl;
+        std::cout << "Successfully insert key "<< key << "the value " << value <<std::endl;
         ++_element_count;        
     }
 
@@ -203,7 +203,7 @@ bool SkipList<K,V>::delete_element(K key){
         while(_skipList_level > 0 && _header->forward[_skipList_level]){
             _skipList_level--;
         }
-        std<<cout << "Successfully delete key "<<key<<endl;
+        std<<cout << "Successfully delete key "<<key<<std::endl;
         --_element_count;
         return true;
     }
