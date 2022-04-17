@@ -32,14 +32,14 @@ class Node{
 
 
 template<typename K,typename V>
-Node<K,V>::Node(K k,V v,int level){ //跳表节点
+Node<K,V>::Node(const K k,const V v,int level){ //跳表节点
     this->key = k;
-    this->val = v;
+    this->value = v;
     this->node_level = level;//节点层数
 
-    this->forward = new Node<K,V>* [level+1];//前进指针
+    this->forward = new Node<K,V>*[level+1];//前进指针
 
-    memset(forward, 0 , sizeof(Node<K,V>*)*(level+1)); 
+    memset(this->forward, 0, sizeof(Node<K,V>*)*(level+1)); 
 }
 
 
@@ -51,12 +51,12 @@ Node<K,V>::~Node(){
 
 template<typename K,typename V>
 K Node<K,V>::get_key() const{
-    return this->key;
+    return key;
 }
 
 template<typename K,typename V>
 V Node<K,V>::get_value() const{
-    return this->value;
+    return value;
 }
 
 template<typename K,typename V>
@@ -75,7 +75,8 @@ class SkipList{
         int insert_element(K,V);
         bool search_element(K);
         int get_random_level();
-        bool delete_element(K);
+        void delete_element(K);
+        void display_lists();
         int size();
     
     private:
@@ -103,21 +104,18 @@ SkipList<K,V>::~SkipList(){
 }
 
 template<typename K,typename V>
-Node<K,V>* SkipList<K,V>::create_node(K k,V v,int level){
+Node<K,V>* SkipList<K,V>::create_node(const K k,const V v,int level){
     Node<K,V>* n = new Node<K,V>(k,v,level);
     return n;
 }
 
-template<typename K,typename V>
-int SkipList<K,V>::size(){
-    return _element_count;
-}
 
 template<typename K,typename V>
 int SkipList<K,V>::get_random_level(){
     int k=1;
     while(rand() % 2) k+=1;
-    return k < max_level?k:max_level;
+    k = (k < max_level) ? k:max_level;
+    return k;
 }
 
 template<typename K,typename V>
@@ -131,8 +129,8 @@ int SkipList<K,V>::insert_element(K key,V value){  //跳表的插入操作
     memset(update,0,sizeof(Node<K,V>*)*(max_level+1));
 
     
-    for(int i = _skipList_level - 1;i >= 0 ;i--){
-        while(current->forward[i] != nullptr && current->forward[i]->get_key() < key){
+    for(int i = _skipList_level;i >= 0 ;i--){
+        while(current->forward[i] != NULL && current->forward[i]->get_key() < key){
             current = current->forward[i];
         }
         update[i]=current;
@@ -140,24 +138,25 @@ int SkipList<K,V>::insert_element(K key,V value){  //跳表的插入操作
 
     current = current->forward[0];
 
-    if(current != nullptr && current->get_key() == key){
-        std::cout << "the key " << key << " exists"<<endl;
+    if(current != NULL && current->get_key() == key){
+        std::cout << "the key " << key << " exists"<<std::endl;
         mtx.unlock();
         return 1;
     }
 
-    if(current == nullptr || current->get_key() != key){
+    if(current == NULL || current->get_key() != key){
         int random_level = get_random_level();
-        Node<K,V> inserted_node = create_node(key,value,random_level);
 
         if(random_level > _skipList_level){
-            for(int i = _skipList_level+1 ;i < random_level;i++){
+            for(int i = _skipList_level+1 ;i < random_level+1;i++){
                 update[i] = _header;
             }
             _skipList_level = random_level;
         }
 
-        for(int i = 0; i <= _skipList_level; i++){
+        Node<K,V>* inserted_node = create_node(key,value,random_level);
+
+        for(int i = 0; i <= random_level; i++){
             inserted_node->forward[i] = update[i]->forward[i];
             update[i]->forward[i] = inserted_node;
         }
@@ -172,11 +171,28 @@ int SkipList<K,V>::insert_element(K key,V value){  //跳表的插入操作
 
 template<typename K,typename V>
 bool SkipList<K,V>::search_element(K key){
+    std::cout<<"search element-------------"<<std::endl;
+    Node<K,V>* curr = _header;
 
+    for(int i = _skipList_level; i>=0 ;i--){
+        while(curr->forward[i] && curr->forward[i]->get_key() < key){
+            curr = curr->forward[i];
+        }
+    }
+
+    curr = curr->forward[0];
+
+    if(curr && curr->get_key() == key){
+        std::cout<< "Found key: "<<key<<", value: "<< curr->get_value() << std::endl;
+        return true;
+    }
+
+    std::cout<<"Not Found key: "<<key<<std::endl;
+    return false;
 }
 
 template<typename K,typename V>
-bool SkipList<K,V>::delete_element(K key){
+void SkipList<K,V>::delete_element(K key){
     mtx.lock();
 
     Node<K,V>* current = this->_header;
@@ -184,8 +200,8 @@ bool SkipList<K,V>::delete_element(K key){
     Node<K,V>* update[max_level+1];
     memset(update,0,sizeof(Node<K,V>*)*(max_level+1));
 
-    for(int i=_skipList_level-1;i>=0;i--){
-        while(current->forward[i] != nullptr && current[i]->forward[i]->get_key() < key){
+    for(int i=_skipList_level;i>=0;i--){
+        while(current->forward[i] != NULL && current->forward[i]->get_key() < key){
             current = current->forward[i];
         }
         update[i] = current;
@@ -193,23 +209,42 @@ bool SkipList<K,V>::delete_element(K key){
 
     current = current->forward[0];
 
-    if(current != nullptr && current->get_key() == key){
+    if(current != NULL && current->get_key() == key){
         for(int i=0;i<=_skipList_level;i++){
             if(update[i]->forward[i] != current) break;
 
             update[i]->forward[i] = current->forward[i];
         }
 
-        while(_skipList_level > 0 && _header->forward[_skipList_level]){
+        while(_skipList_level > 0 && _header->forward[_skipList_level] == 0){
             _skipList_level--;
         }
-        std<<cout << "Successfully delete key "<<key<<std::endl;
-        --_element_count;
-        return true;
+        std::cout << "Successfully delete key "<<key<<std::endl;
+        --_element_count;     
     }
-    return false;
+
     mtx.unlock();
-    
+    return;
+}
+
+template<typename K,typename V>
+void SkipList<K,V>::display_lists(){
+    std::cout<<"\n*******SkipList*******"<<"\n";
+
+    for(int i=0;i<=_skipList_level;i++){
+        Node<K,V>* curr = this->_header->forward[i];
+        std::cout<<"level :"<<i<<": ";
+        while(curr){
+            std::cout<<curr->get_key() << ":"<<curr->get_value()<<";";
+            curr = curr->forward[i];
+        }
+        std::cout << std::endl;
+    }
+}
+
+template<typename K,typename V>
+int SkipList<K,V>::size(){
+    return _element_count;
 }
 
 
